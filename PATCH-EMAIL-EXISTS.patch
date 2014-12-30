@@ -1,0 +1,200 @@
+diff --git app/code/core/Mage/Checkout/Helper/Data.php app/code/core/Mage/Checkout/Helper/Data.php
+index adea796..04b576f 100644
+--- app/code/core/Mage/Checkout/Helper/Data.php
++++ app/code/core/Mage/Checkout/Helper/Data.php
+@@ -32,7 +32,12 @@
+ class Mage_Checkout_Helper_Data extends Mage_Core_Helper_Abstract
+ {
+     const XML_PATH_GUEST_CHECKOUT = 'checkout/options/guest_checkout';
++    /**
++     * @deprecated uses XML_PATH_ALLOW_REGISTER_ON_CHECKOUT instead
++     */
+     const XML_PATH_CUSTOMER_MUST_BE_LOGGED = 'checkout/options/customer_must_be_logged';
++    const XML_PATH_ALLOW_REGISTER_ON_CHECKOUT = 'checkout/options/allow_register_on_checkout';
++
+ 
+     protected $_agreements = null;
+ 
+@@ -299,6 +304,8 @@ class Mage_Checkout_Helper_Data extends Mage_Core_Helper_Abstract
+     }
+ 
+     /**
++     * @deprecated uses isAllowRegisterOnCheckout instead
++     *
+      * Check if user must be logged during checkout process
+      *
+      * @return boolean
+@@ -307,4 +314,14 @@ class Mage_Checkout_Helper_Data extends Mage_Core_Helper_Abstract
+     {
+         return Mage::getStoreConfigFlag(self::XML_PATH_CUSTOMER_MUST_BE_LOGGED);
+     }
++
++    /**
++     * Check if customer allowed to register during checkout
++     *
++     * @return bool
++     */
++    public function isAllowRegisterOnCheckout()
++    {
++        return Mage::getStoreConfigFlag(self::XML_PATH_ALLOW_REGISTER_ON_CHECKOUT);
++    }
+ }
+diff --git app/code/core/Mage/Checkout/controllers/OnepageController.php app/code/core/Mage/Checkout/controllers/OnepageController.php
+index 1c02bb6..f87526b 100644
+--- app/code/core/Mage/Checkout/controllers/OnepageController.php
++++ app/code/core/Mage/Checkout/controllers/OnepageController.php
+@@ -586,6 +586,6 @@ class Mage_Checkout_OnepageController extends Mage_Checkout_Controller_Action
+         return Mage::getSingleton('customer/session')->isLoggedIn()
+             || $this->getRequest()->getActionName() == 'index'
+             || Mage::helper('checkout')->isAllowedGuestCheckout($this->getOnepage()->getQuote())
+-            || !Mage::helper('checkout')->isCustomerMustBeLogged();
++            || Mage::helper('checkout')->isAllowRegisterOnCheckout();
+     }
+ }
+diff --git app/code/core/Mage/Checkout/etc/config.xml app/code/core/Mage/Checkout/etc/config.xml
+index 19d2e45..532a20f 100644
+--- app/code/core/Mage/Checkout/etc/config.xml
++++ app/code/core/Mage/Checkout/etc/config.xml
+@@ -28,7 +28,7 @@
+ <config>
+     <modules>
+         <Mage_Checkout>
+-            <version>1.6.0.0</version>
++            <version>1.6.0.0.1.2</version>
+         </Mage_Checkout>
+     </modules>
+     <global>
+@@ -241,6 +241,7 @@
+             <options>
+                 <onepage_checkout_enabled>1</onepage_checkout_enabled>
+                 <guest_checkout>1</guest_checkout>
++                <allow_register_on_checkout>1</allow_register_on_checkout>
+             </options>
+             <cart>
+                 <delete_quote_after>30</delete_quote_after>
+diff --git app/code/core/Mage/Checkout/etc/system.xml app/code/core/Mage/Checkout/etc/system.xml
+index c27cab4..ab94ebb 100644
+--- app/code/core/Mage/Checkout/etc/system.xml
++++ app/code/core/Mage/Checkout/etc/system.xml
+@@ -62,8 +62,8 @@
+                             <show_in_website>1</show_in_website>
+                             <show_in_store>1</show_in_store>
+                         </guest_checkout>
+-                        <customer_must_be_logged translate="label">
+-                            <label>Require Customer To Be Logged In To Checkout</label>
++                        <allow_register_on_checkout translate="label">
++                            <label>Allow Register On Checkout</label>
+                             <frontend_type>select</frontend_type>
+                             <source_model>adminhtml/system_config_source_yesno</source_model>
+                             <depends><guest_checkout>0</guest_checkout></depends>
+@@ -71,7 +71,7 @@
+                             <show_in_default>1</show_in_default>
+                             <show_in_website>1</show_in_website>
+                             <show_in_store>0</show_in_store>
+-                        </customer_must_be_logged>                        
++                        </allow_register_on_checkout>
+                         <enable_agreements translate="label">
+                             <label>Enable Terms and Conditions</label>
+                             <frontend_type>select</frontend_type>
+diff --git app/code/core/Mage/Checkout/sql/checkout_setup/mysql4-upgrade-1.6.0.0.1.1-1.6.0.0.1.2.php app/code/core/Mage/Checkout/sql/checkout_setup/mysql4-upgrade-1.6.0.0.1.1-1.6.0.0.1.2.php
+new file mode 100644
+index 0000000..72b37d5
+--- /dev/null
++++ app/code/core/Mage/Checkout/sql/checkout_setup/mysql4-upgrade-1.6.0.0.1.1-1.6.0.0.1.2.php
+@@ -0,0 +1,49 @@
++<?php
++/**
++ * Magento Enterprise Edition
++ *
++ * NOTICE OF LICENSE
++ *
++ * This source file is subject to the Magento Enterprise Edition License
++ * that is bundled with this package in the file LICENSE_EE.txt.
++ * It is also available through the world-wide-web at this URL:
++ * http://www.magentocommerce.com/license/enterprise-edition
++ * If you did not receive a copy of the license and are unable to
++ * obtain it through the world-wide-web, please send an email
++ * to license@magentocommerce.com so we can send you a copy immediately.
++ *
++ * DISCLAIMER
++ *
++ * Do not edit or add to this file if you wish to upgrade Magento to newer
++ * versions in the future. If you wish to customize Magento for your
++ * needs please refer to http://www.magentocommerce.com for more information.
++ *
++ * @category    Mage
++ * @package     Mage_Checkout
++ * @copyright   Copyright (c) 2012 Magento Inc. (http://www.magentocommerce.com)
++ * @license     http://www.magentocommerce.com/license/enterprise-edition
++ */
++
++
++/* @var $installer Mage_Checkout_Model_Resource_Setup */
++$installer = $this;
++
++$installer->startSetup();
++$setup = $installer->getConnection();
++
++$select = $setup->select()
++    ->from($installer->getTable('core/config_data'))
++    ->where('path=?', Mage_Checkout_Helper_Data::XML_PATH_CUSTOMER_MUST_BE_LOGGED);
++
++$data = $setup->fetchAll($select);
++
++foreach ($data as $dataRow) {
++    $setup->insertOnDuplicate($installer->getTable('core/config_data'), array(
++        'scope'    => $dataRow['scope'],
++        'scope_id' => $dataRow['scope_id'],
++        'path'     => Mage_Checkout_Helper_Data::XML_PATH_ALLOW_REGISTER_ON_CHECKOUT,
++        'value'    => abs($dataRow['value'] - 1)
++    ));
++}
++
++$installer->endSetup();
+diff --git app/code/core/Mage/Paypal/Controller/Express/Abstract.php app/code/core/Mage/Paypal/Controller/Express/Abstract.php
+index 1e08f2e..7df0384 100644
+--- app/code/core/Mage/Paypal/Controller/Express/Abstract.php
++++ app/code/core/Mage/Paypal/Controller/Express/Abstract.php
+@@ -66,11 +66,16 @@ abstract class Mage_Paypal_Controller_Express_Abstract extends Mage_Core_Control
+                 $this->_getQuote()->removeAllAddresses();
+             }
+ 
++            $store = $this->_getQuote()->getStoreId();
++            $guestCheckout = Mage::getStoreConfigFlag(Mage_Checkout_Helper_Data::XML_PATH_GUEST_CHECKOUT, $store);
+             $customer = Mage::getSingleton('customer/session')->getCustomer();
+             if ($customer && $customer->getId()) {
+                 $this->_checkout->setCustomerWithAddressChange(
+                     $customer, $this->_getQuote()->getBillingAddress(), $this->_getQuote()->getShippingAddress()
+                 );
++            } elseif (!$guestCheckout && !$this->_getQuote()->getCheckoutMethod()) {
++                $this->_redirect('checkout/onepage');
++                return;
+             }
+ 
+             // billing agreement
+diff --git app/design/frontend/base/default/template/persistent/checkout/onepage/login.phtml app/design/frontend/base/default/template/persistent/checkout/onepage/login.phtml
+index c135733..ed9392e 100644
+--- app/design/frontend/base/default/template/persistent/checkout/onepage/login.phtml
++++ app/design/frontend/base/default/template/persistent/checkout/onepage/login.phtml
+@@ -101,7 +101,7 @@
+             <p class="required">&nbsp;</p>
+             <?php if ($this->getQuote()->isAllowedGuestCheckout()): ?>
+                 <button id="onepage-guest-register-button" type="button" class="button" onclick="checkout.setMethod();"><span><span><?php echo $this->__('Continue') ?></span></span></button>
+-            <?php elseif ($this->helper('checkout')->isCustomerMustBeLogged()): ?>
++            <?php elseif (!$this->helper('checkout')->isAllowRegisterOnCheckout()): ?>
+                 <button id="onepage-guest-register-button" type="button" class="button" onclick="window.location='<?php echo $this->helper('checkout/url')->getRegistrationUrl();?>'"><span><span><?php echo $this->__('Register') ?></span></span></button>
+             <?php else: ?>
+                 <form action="<?php echo $this->getUrl('persistent/index/saveMethod'); ?>">
+diff --git app/design/frontend/enterprise/default/template/persistent/checkout/onepage/login.phtml app/design/frontend/enterprise/default/template/persistent/checkout/onepage/login.phtml
+index 64f8654..781da63 100644
+--- app/design/frontend/enterprise/default/template/persistent/checkout/onepage/login.phtml
++++ app/design/frontend/enterprise/default/template/persistent/checkout/onepage/login.phtml
+@@ -109,7 +109,7 @@
+         <div class="buttons-set">
+             <?php if ($this->getQuote()->isAllowedGuestCheckout()): ?>
+                 <button id="onepage-guest-register-button" type="button" class="button" onclick="checkout.setMethod();"><span><span><?php echo $this->__('Continue') ?></span></span></button>
+-            <?php elseif ($this->helper('checkout')->isCustomerMustBeLogged()): ?>
++            <?php elseif (!$this->helper('checkout')->isAllowRegisterOnCheckout()): ?>
+                 <button id="onepage-guest-register-button" type="button" class="button" onclick="window.location='<?php echo $this->helper('checkout/url')->getRegistrationUrl();?>'"><span><span><?php echo $this->__('Register') ?></span></span></button>
+             <?php else: ?>
+                 <form action="<?php echo $this->getUrl('persistent/index/saveMethod'); ?>">
